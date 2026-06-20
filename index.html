@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GridLock 2.0 – Event-Driven Congestion Management | Bengaluru Traffic</title>
+    <meta name="description" content="AI-powered event-driven congestion management system for Bengaluru traffic. Forecasts event impact and recommends optimal manpower, barricading, and diversion plans.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <div class="loader-content">
+            <div class="loader-logo">
+                <span class="logo-icon">🚦</span>
+                <h1>GridLock<span class="accent">2.0</span></h1>
+            </div>
+            <div class="loader-bar">
+                <div class="loader-progress" id="loader-progress"></div>
+            </div>
+            <p class="loader-text" id="loader-text">Initializing system...</p>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="app" class="hidden">
+        <!-- Sidebar Navigation -->
+        <nav id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="logo-icon">🚦</span>
+                    <div>
+                        <h1>GridLock<span class="accent">2.0</span></h1>
+                        <span class="subtitle">Bengaluru Traffic AI</span>
+                    </div>
+                </div>
+            </div>
+            <ul class="nav-links">
+                <li class="nav-item active" data-page="dashboard" id="nav-dashboard">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-label">Dashboard</span>
+                </li>
+                <li class="nav-item" data-page="impact" id="nav-impact">
+                    <span class="nav-icon">🎯</span>
+                    <span class="nav-label">Impact Predictor</span>
+                </li>
+                <li class="nav-item" data-page="diversion" id="nav-diversion">
+                    <span class="nav-icon">🔀</span>
+                    <span class="nav-label">Diversion Planner</span>
+                </li>
+                <li class="nav-item" data-page="barricading" id="nav-barricading">
+                    <span class="nav-icon">🚧</span>
+                    <span class="nav-label">Barricading Plan</span>
+                </li>
+                <li class="nav-item" data-page="manpower" id="nav-manpower">
+                    <span class="nav-icon">👮</span>
+                    <span class="nav-label">Manpower Allocation</span>
+                </li>
+                <li class="nav-item" data-page="explorer" id="nav-explorer">
+                    <span class="nav-icon">🔍</span>
+                    <span class="nav-label">Data Explorer</span>
+                </li>
+                <li class="nav-item" data-page="scale" id="nav-scale">
+                    <span class="nav-icon">🚀</span>
+                    <span class="nav-label">Scale & Vision</span>
+                </li>
+            </ul>
+            <div class="sidebar-footer">
+                <div class="status-badge">
+                    <span class="status-dot"></span>
+                    <span>System Active</span>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main id="main-content">
+            <!-- Top Bar -->
+            <header id="top-bar">
+                <div class="top-bar-left">
+                    <button id="menu-toggle" class="icon-btn">☰</button>
+                    <h2 id="page-title">Dashboard Overview</h2>
+                </div>
+                <div class="top-bar-right">
+                    <div class="search-box" id="search-box">
+                        <span class="search-icon">🔎</span>
+                        <input type="text" id="global-search" placeholder="Search corridors, junctions...">
+                    </div>
+                </div>
+            </header>
+
+            <!-- Page: Dashboard -->
+            <section id="page-dashboard" class="page active">
+                <div class="stats-grid">
+                    <div class="stat-card" id="stat-total-events">
+                        <div class="stat-icon">📋</div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="val-total-events">—</span>
+                            <span class="stat-label">Total Events</span>
+                        </div>
+                        <div class="stat-trend up">+12%</div>
+                    </div>
+                    <div class="stat-card" id="stat-road-closures">
+                        <div class="stat-icon">🚧</div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="val-road-closures">—</span>
+                            <span class="stat-label">Road Closures</span>
+                        </div>
+                        <div class="stat-trend down">-5%</div>
+                    </div>
+                    <div class="stat-card" id="stat-active-events">
+                        <div class="stat-icon">⚡</div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="val-active-events">—</span>
+                            <span class="stat-label">Active Events</span>
+                        </div>
+                        <div class="stat-trend neutral">→</div>
+                    </div>
+                    <div class="stat-card" id="stat-corridors">
+                        <div class="stat-icon">🛣️</div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="val-corridors">—</span>
+                            <span class="stat-label">Corridors Monitored</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <!-- Map -->
+                    <div class="card map-card" id="dashboard-map-card">
+                        <div class="card-header">
+                            <h3>🗺️ Event Heatmap – Bengaluru</h3>
+                            <div class="card-controls">
+                                <select id="map-filter-cause" class="select-mini">
+                                    <option value="all">All Causes</option>
+                                </select>
+                                <select id="map-filter-type" class="select-mini">
+                                    <option value="all">All Types</option>
+                                    <option value="planned">Planned</option>
+                                    <option value="unplanned">Unplanned</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="dashboard-map" class="map-container"></div>
+                    </div>
+
+                    <!-- Hourly Distribution -->
+                    <div class="card" id="hourly-chart-card">
+                        <div class="card-header">
+                            <h3>⏰ Hourly Event Distribution (IST)</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="hourly-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Corridor Breakdown -->
+                    <div class="card" id="corridor-chart-card">
+                        <div class="card-header">
+                            <h3>🛣️ Top Corridors by Incidents</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="corridor-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Cause Distribution -->
+                    <div class="card" id="cause-chart-card">
+                        <div class="card-header">
+                            <h3>🔍 Event Causes Breakdown</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="cause-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Day of Week -->
+                    <div class="card" id="dow-chart-card">
+                        <div class="card-header">
+                            <h3>📅 Day-of-Week Pattern</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="dow-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Monthly Trend -->
+                    <div class="card" id="monthly-chart-card">
+                        <div class="card-header">
+                            <h3>📈 Monthly Trend</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="monthly-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Page: Impact Predictor -->
+            <section id="page-impact" class="page">
+                <div class="predictor-layout">
+                    <div class="card predictor-form-card">
+                        <div class="card-header">
+                            <h3>🎯 Event Impact Prediction Engine</h3>
+                            <p class="card-subtitle">Input event details to forecast traffic impact and generate response plan</p>
+                        </div>
+                        <form id="impact-form" class="predictor-form">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="pred-event-type">Event Type</label>
+                                    <select id="pred-event-type" required>
+                                        <option value="planned">Planned</option>
+                                        <option value="unplanned">Unplanned</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="pred-cause">Event Cause</label>
+                                    <select id="pred-cause" required>
+                                        <option value="public_event">Public Event</option>
+                                        <option value="procession">Procession</option>
+                                        <option value="vip_movement">VIP Movement</option>
+                                        <option value="construction">Construction</option>
+                                        <option value="protest">Protest</option>
+                                        <option value="accident">Accident</option>
+                                        <option value="vehicle_breakdown">Vehicle Breakdown</option>
+                                        <option value="tree_fall">Tree Fall</option>
+                                        <option value="water_logging">Water Logging</option>
+                                        <option value="pot_holes">Pot Holes</option>
+                                        <option value="road_conditions">Road Conditions</option>
+                                        <option value="congestion">Congestion</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="pred-corridor">Corridor</label>
+                                    <select id="pred-corridor" required>
+                                        <!-- Populated dynamically -->
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="pred-junction">Junction (optional)</label>
+                                    <select id="pred-junction">
+                                        <option value="">— Select —</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="pred-priority">Priority</label>
+                                    <select id="pred-priority">
+                                        <option value="High">High</option>
+                                        <option value="Low">Low</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="pred-road-closure">Requires Road Closure</label>
+                                    <select id="pred-road-closure">
+                                        <option value="true">Yes</option>
+                                        <option value="false">No</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="pred-datetime">Date & Time</label>
+                                    <input type="datetime-local" id="pred-datetime" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="pred-duration">Expected Duration (hours)</label>
+                                    <input type="number" id="pred-duration" min="0.5" max="720" step="0.5" value="4">
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                            <button type="submit" class="btn-primary" id="btn-predict">
+                                <span>🧠</span> Predict Impact & Generate Plan
+                            </button>
+                            <button type="button" class="btn-primary" id="btn-simulate" style="background: linear-gradient(135deg, #10b981, #06b6d4); box-shadow: 0 4px 12px rgba(16,185,129,0.3);">
+                                <span>🎲</span> Simulate Random Event
+                            </button>
+                        </div>
+                        </form>
+                    </div>
+
+                    <div class="predictor-results" id="predictor-results" style="display:none;">
+                        <div class="card result-score-card">
+                            <div class="card-header"><h3>📊 Impact Score</h3></div>
+                            <div class="score-display">
+                                <div class="score-ring" id="score-ring">
+                                    <svg viewBox="0 0 200 200">
+                                        <circle cx="100" cy="100" r="85" class="score-bg"/>
+                                        <circle cx="100" cy="100" r="85" class="score-fill" id="score-fill"/>
+                                    </svg>
+                                    <div class="score-value" id="score-value">0</div>
+                                </div>
+                                <div class="score-label" id="score-label">Calculating...</div>
+                            </div>
+                        </div>
+                        <div class="card result-breakdown-card">
+                            <div class="card-header"><h3>📋 Response Plan Summary</h3></div>
+                            <div id="response-plan-content"></div>
+                        </div>
+                        <div class="card result-historical-card">
+                            <div class="card-header"><h3>📜 Historical Comparison</h3></div>
+                            <div id="historical-comparison"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Page: Diversion Planner -->
+            <section id="page-diversion" class="page">
+                <div class="diversion-layout">
+                    <div class="card diversion-controls-card">
+                        <div class="card-header">
+                            <h3>🔀 Quickest Diversion Dictionary</h3>
+                            <p class="card-subtitle">Select a blocked corridor or junction to see optimal alternative routes</p>
+                        </div>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="div-corridor">Blocked Corridor</label>
+                                <select id="div-corridor">
+                                    <!-- Populated dynamically -->
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="div-junction">Blocked Junction</label>
+                                <select id="div-junction">
+                                    <option value="">— Select —</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button class="btn-primary" id="btn-find-diversion">
+                            <span>🔍</span> Find Diversions
+                        </button>
+                        <div id="diversion-results" class="diversion-results"></div>
+                    </div>
+                    <div class="card diversion-map-card">
+                        <div class="card-header">
+                            <h3>🗺️ Diversion Route Map</h3>
+                        </div>
+                        <div id="diversion-map" class="map-container"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Page: Barricading Plan -->
+            <section id="page-barricading" class="page">
+                <div class="barricading-layout">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>🚧 Barricade Severity Score (BSS) Calculator</h3>
+                            <p class="card-subtitle">Automated barricading recommendations based on event severity analysis</p>
+                        </div>
+                        <div id="barricading-table-container">
+                            <table class="data-table" id="barricading-table">
+                                <thead>
+                                    <tr>
+                                        <th>Event ID</th>
+                                        <th>Corridor</th>
+                                        <th>Cause</th>
+                                        <th>BSS Score</th>
+                                        <th>Category</th>
+                                        <th>Barricade Type</th>
+                                        <th>Equipment Needed</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="barricading-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="barricading-stats-row">
+                        <div class="card">
+                            <div class="card-header"><h3>📊 BSS Distribution</h3></div>
+                            <div class="chart-container">
+                                <canvas id="bss-distribution-chart"></canvas>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header"><h3>🚧 Barricade Type by Cause</h3></div>
+                            <div class="chart-container">
+                                <canvas id="barricade-cause-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Page: Manpower Allocation -->
+            <section id="page-manpower" class="page">
+                <div class="manpower-layout">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>👮 Zone-Based Manpower Deployment</h3>
+                            <p class="card-subtitle">Optimal officer allocation based on historical event density and severity</p>
+                        </div>
+                        <div class="manpower-grid" id="manpower-zone-grid"></div>
+                    </div>
+                    <div class="manpower-bottom-row">
+                        <div class="card">
+                            <div class="card-header"><h3>📊 Officers per Zone</h3></div>
+                            <div class="chart-container">
+                                <canvas id="manpower-zone-chart"></canvas>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header"><h3>👮 Manpower by Event Type</h3></div>
+                            <div class="chart-container">
+                                <canvas id="manpower-event-chart"></canvas>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header"><h3>🧮 Manpower Calculator</h3></div>
+                            <form id="manpower-calc-form" class="predictor-form">
+                                <div class="form-group">
+                                    <label for="mp-cause">Event Cause</label>
+                                    <select id="mp-cause">
+                                        <option value="public_event">Public Event</option>
+                                        <option value="procession">Procession</option>
+                                        <option value="vip_movement">VIP Movement</option>
+                                        <option value="construction">Construction</option>
+                                        <option value="protest">Protest</option>
+                                        <option value="accident">Accident</option>
+                                        <option value="vehicle_breakdown">Vehicle Breakdown</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="mp-severity">Severity (1-10)</label>
+                                    <input type="range" id="mp-severity" min="1" max="10" value="5">
+                                    <span id="mp-severity-val" class="range-value">5</span>
+                                </div>
+                                <div class="form-group">
+                                    <label for="mp-duration">Duration (hours)</label>
+                                    <input type="number" id="mp-duration" min="1" max="72" value="4">
+                                </div>
+                                <div class="form-group">
+                                    <label for="mp-road-closure">Road Closure</label>
+                                    <select id="mp-road-closure">
+                                        <option value="yes">Yes</option>
+                                        <option value="no">No</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn-primary">
+                                    <span>🧮</span> Calculate Manpower
+                                </button>
+                                <div id="manpower-calc-result" class="calc-result"></div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Page: Data Explorer -->
+            <section id="page-explorer" class="page">
+                <div class="explorer-layout">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>🔍 Full Dataset Explorer</h3>
+                            <div class="card-controls">
+                                <select id="explorer-corridor-filter" class="select-mini">
+                                    <option value="all">All Corridors</option>
+                                </select>
+                                <select id="explorer-cause-filter" class="select-mini">
+                                    <option value="all">All Causes</option>
+                                </select>
+                                <select id="explorer-type-filter" class="select-mini">
+                                    <option value="all">All Types</option>
+                                    <option value="planned">Planned</option>
+                                    <option value="unplanned">Unplanned</option>
+                                </select>
+                                <select id="explorer-status-filter" class="select-mini">
+                                    <option value="all">All Statuses</option>
+                                    <option value="active">Active</option>
+                                    <option value="closed">Closed</option>
+                                    <option value="resolved">Resolved</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="explorer-stats" id="explorer-stats"></div>
+                        <div class="table-wrapper">
+                            <table class="data-table" id="explorer-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Type</th>
+                                        <th>Cause</th>
+                                        <th>Corridor</th>
+                                        <th>Junction</th>
+                                        <th>Priority</th>
+                                        <th>Road Closure</th>
+                                        <th>Status</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="explorer-tbody"></tbody>
+                            </table>
+                        </div>
+                        <div class="pagination" id="explorer-pagination"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Page: Scale & Vision -->
+            <section id="page-scale" class="page">
+                <div class="scale-layout" id="scale-content">
+                    <!-- Rendered dynamically by app.js -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
