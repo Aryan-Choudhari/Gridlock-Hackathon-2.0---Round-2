@@ -1,11 +1,5 @@
 # 🚦 The Prototype: Event-Driven Congestion Intelligence System
 ### AI-Powered Traffic Forecasting, Diversion Planning, & Manpower Allocation for Bengaluru
-
-[![Hackathon](https://img.shields.io/badge/Flipkart-Grid-6.0-Round-2-Prototype-f6c915?style=for-the-badge&logo=flipkart&logoColor=white)](https://www.flipkartgrid.com)
-[![Status](https://img.shields.io/badge/Status-Live-Prototype-10b981?style=for-the-badge)]()
-[![Dataset](https://img.shields.io/badge/Dataset-8,173-Events-3b82f6?style=for-the-badge)]()
-[![Architecture](https://img.shields.io/badge/Zero-External-Frameworks-ef4444?style=for-the-badge)]()
-
 ---
 
 ## 📋 Table of Contents
