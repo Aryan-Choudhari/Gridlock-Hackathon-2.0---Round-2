@@ -1,10 +1,10 @@
-# 🚦 GridLock 2.0: Event-Driven Congestion Intelligence System
+# 🚦 The Prototype: Event-Driven Congestion Intelligence System
 ### AI-Powered Traffic Forecasting, Diversion Planning, & Manpower Allocation for Bengaluru
 
-[![Hackathon](https://img.shields.io/badge/Flipkart_Grid_6.0-Round_2_Prototype-f6c915?style=for-the-badge&logo=flipkart&logoColor=white)](https://www.flipkartgrid.com)
-[![Status](https://img.shields.io/badge/Status-Live_Prototype-10b981?style=for-the-badge)]()
-[![Dataset](https://img.shields.io/badge/Dataset-8,173_Events-3b82f6?style=for-the-badge)]()
-[![Architecture](https://img.shields.io/badge/Zero-External_Frameworks-ef4444?style=for-the-badge)]()
+[![Hackathon](https://img.shields.io/badge/Flipkart-Grid-6.0-Round-2-Prototype-f6c915?style=for-the-badge&logo=flipkart&logoColor=white)](https://www.flipkartgrid.com)
+[![Status](https://img.shields.io/badge/Status-Live-Prototype-10b981?style=for-the-badge)]()
+[![Dataset](https://img.shields.io/badge/Dataset-8,173-Events-3b82f6?style=for-the-badge)]()
+[![Architecture](https://img.shields.io/badge/Zero-External-Frameworks-ef4444?style=for-the-badge)]()
 
 ---
 
@@ -24,13 +24,13 @@
 
 ## 🎯 Project Overview
 
-**GridLock 2.0** is an operational intelligence system designed to mitigate traffic congestion in Bengaluru caused by both planned and unplanned events. By ingesting historical incident data from the Bengaluru Traffic Police (BTP) **Astram platform** (covering 8,173 real-world events), GridLock 2.0 equips dispatchers and traffic planners with three key tools:
+**The Prototype** is an operational intelligence system designed to mitigate traffic congestion in Bengaluru caused by both planned and unplanned events. By ingesting historical incident data from the Bengaluru Traffic Police (BTP) **Astram platform** (covering 8,173 real-world events), The Prototype equips dispatchers and traffic planners with three key tools:
 
 1. **Impact Forecasting:** A multi-factor **Bengaluru Severity Score (BSS)** that quantifies event disruption before it spreads.
 2. **Dynamic Diversions:** An interactive network analysis tool mapping alternate routes across corridors when junctions are blocked.
 3. **Manpower & Equipment Resource Allocation:** A formula-driven engine recommending staffing levels, shift schedules, and barricade manifests.
 
-Built using **vanilla web technologies**, GridLock 2.0 operates with **zero external dependencies, databases, or frameworks** on the client side, allowing it to load instantly and run locally on any terminal, mobile device, or control room console.
+Built using **vanilla web technologies**, The Prototype operates with **zero external dependencies, databases, or frameworks** on the client side, allowing it to load instantly and run locally on any terminal, mobile device, or control room console.
 
 ---
 
@@ -55,11 +55,11 @@ Analysis of the Astram dataset reveals:
 
 ## 🏗️ Solution Architecture
 
-GridLock 2.0 uses a two-stage data pipeline to clean and index spatial-temporal data, which is then made accessible through a fast frontend portal:
+The Prototype uses a two-stage data pipeline to clean and index spatial-temporal data, which is then made accessible through a fast frontend portal:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    GridLock 2.0 Architecture                │
+│                    The Prototype Architecture                │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │   ┌─────────────────┐  ┌──────────────────┐  ┌───────────┐ │
@@ -82,7 +82,7 @@ GridLock 2.0 uses a two-stage data pipeline to clean and index spatial-temporal 
 └─────────────────────────────────────────────────────────────┘
 ```
 
-1. **The Preprocessing Pipeline (`process_data.py`):** Written in pure Python, it parses the raw CSV, performs timezone normalization, filters out outlier durations using the Interquartile Range (IQR), fits event cause weights based on actual closure rates, creates a coordinate-linked junction diversion graph, and exports the final metrics into a single structured JSON.
+1. **The Preprocessing Pipeline (`process-data.py`):** Written in pure Python, it parses the raw CSV, performs timezone normalization, filters out outlier durations using the Interquartile Range (IQR), fits event cause weights based on actual closure rates, creates a coordinate-linked junction diversion graph, and exports the final metrics into a single structured JSON.
 2. **The Client Interface (`index.html` & `app.js`):** A Single Page Application (SPA) that loads the preprocessed JSON to render interactive charts (via Chart.js) and maps (via Leaflet.js). If the JSON file is missing or fails to load, **an in-browser CSV parser automatically reconstructs the data structures directly from the raw CSV**, ensuring zero downtime.
 
 ---
@@ -108,7 +108,7 @@ Analysis indicates that traffic load peaks on weekdays between 08:00–11:00 and
 
 ## 🔬 Algorithms & Mathematical Formulation
 
-The recommendation engines in GridLock 2.0 are governed by three primary mathematical pillars:
+The recommendation engines in The Prototype are governed by three primary mathematical pillars:
 
 ### 1. Bengaluru Severity Score (BSS)
 The BSS is a normalized score bounded by `[0, 1]`. It represents the overall traffic threat level and determines physical barricading requirements:
@@ -166,7 +166,7 @@ The pipeline compiles a Dijkstra-ready routing graph representing junctions and 
 
 ## ⚙️ Technical Stack & Architectural Decisions
 
-GridLock 2.0 uses a highly optimized, zero-compilation build architecture designed for reliability in low-bandwidth municipal IT environments:
+The Prototype uses a highly optimized, zero-compilation build architecture designed for reliability in low-bandwidth municipal IT environments:
 
 | Component | Technical Implementation | Rationale |
 | :--- | :--- | :--- |
@@ -180,13 +180,13 @@ GridLock 2.0 uses a highly optimized, zero-compilation build architecture design
 ## 📂 Project Structure
 
 ```
-GridLock_Submission/
+Prototype-Submission/
 ├── index.html                        # Main single-page application dashboard interface
 ├── styles.css                        # Design system: variables, glassmorphism, responsive grid layout
 ├── app.js                            # Core frontend logic: metrics, simulator, diversion router, mapping
-├── process_data.py                   # Python data-engineering pipeline (CSV → JSON compiler)
-├── processed_data.json               # Compiled static database containing processed graph data
-├── Astram event data_anonymized - Astram event data_anonymizedb40ac87.csv  # Raw dataset containing 8,173 BTP event records
+├── process-data.py                   # Python data-engineering pipeline (CSV → JSON compiler)
+├── processed-data.json               # Compiled static database containing processed graph data
+├── astram-event-data.csv  # Raw dataset containing 8,173 BTP event records
 └── README.md                         # This file
 ```
 
@@ -195,7 +195,7 @@ GridLock_Submission/
 ## 🚀 How to Run & Verify
 
 ### Option A: Quick Start (Using Preprocessed Data)
-Since the repository contains the pre-compiled `processed_data.json` file, you can start the application immediately by serving it via a local HTTP server.
+Since the repository contains the pre-compiled `processed-data.json` file, you can start the application immediately by serving it via a local HTTP server.
 
 > [!IMPORTANT]
 > Running the application directly from the filesystem (`file://` protocol) will trigger browser CORS security exceptions when loading the JSON dataset. Always run the application via a local HTTP server.
@@ -223,18 +223,18 @@ Open your web browser and navigate to: `http://localhost:8080`
 If the raw CSV data has changed, or you want to rebuild the static JSON file, run the Python preprocessing script:
 
 ```bash
-python3 process_data.py
+python3 process-data.py
 ```
 
 **Expected Output:**
 ```text
-Reading CSV: Astram event data_anonymized - Astram event data_anonymizedb40ac87.csv
+Reading CSV: astram-event-data.csv
 Processing …
   → 8155 valid events loaded
   → Computing BSS scores …
   → Computing hotspots …
   → Building diversion graph …
-Writing JSON: processed_data.json
+Writing JSON: processed-data.json
   → Total events:        8155
   → Corridors:           22
   → Junctions:           294
@@ -250,7 +250,7 @@ Done ✓
 
 ### Option C: In-Browser Fallback Verification
 To verify the system's client-side fallback mode:
-1. Temporarily rename or move `processed_data.json`.
+1. Temporarily rename or move `processed-data.json`.
 2. Reload `http://localhost:8080`.
 3. The loading screen will display `JSON not found, parsing CSV...`.
 4. The frontend will parse the raw CSV in-browser, rebuild the metrics, and run normally.
@@ -293,7 +293,7 @@ To verify the system's client-side fallback mode:
 
 ## 📈 Scalability & Future Integration Roadmap
 
-GridLock 2.0 is designed to scale from a static prototype to an active, city-wide operational tool:
+The Prototype is designed to scale from a static prototype to an active, city-wide operational tool:
 
 1. **Phase 1 (Current Prototype):** Standalone browser engine using static dataset compile scripts and dual-load mechanisms.
 2. **Phase 2 (Live API Integration):** Integrating live Astram feeds and Google Maps Traffic APIs to continuously adjust junction weights.

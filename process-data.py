@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-process_data.py  –  GridLock 2.0  Enhanced Analytics Pipeline
+process_data.py  –  The Prototype  Enhanced Analytics Pipeline
 Event-Driven Congestion Management – Bengaluru Traffic
 ──────────────────────────────────────────────────────
 Improvements over baseline:
@@ -23,9 +23,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # ── Config ────────────────────────────────────────────────────────────────────
 SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
-CSV_FILE     = os.path.join(SCRIPT_DIR,
-    "Astram event data_anonymized - Astram event data_anonymizedb40ac87.csv")
-OUT_FILE     = os.path.join(SCRIPT_DIR, "processed_data.json")
+CSV_FILE     = os.path.join(SCRIPT_DIR, 
+    "astram-event-data.csv")
+OUT_FILE     = os.path.join(SCRIPT_DIR, "processed-data.json")
 
 IST = timezone(timedelta(hours=5, minutes=30))
 UTC = timezone.utc
@@ -590,7 +590,7 @@ def process(events):
 def main():
     if not os.path.exists(CSV_FILE):
         print(f"[WARN] CSV not found: {CSV_FILE}")
-        print("  → Using existing processed_data.json as base …")
+        print("  → Using existing processed-data.json as base …")
         # If CSV missing, enrich existing JSON
         if os.path.exists(OUT_FILE):
             with open(OUT_FILE) as f:

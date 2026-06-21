@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════
-   GridLock 2.0 – Main Application Logic
+   The Prototype – Main Application Logic
    Event-Driven Congestion Management for Bengaluru
    ═══════════════════════════════════════════════════════════ */
 
@@ -84,7 +84,7 @@ async function initApp() {
     
     try {
         // Try loading preprocessed JSON first
-        let response = await fetch('processed_data.json');
+        let response = await fetch('processed-data.json');
         if (response.ok) {
             DATA = await response.json();
             updateLoader(50, 'Data loaded, building interface...');
@@ -2147,7 +2147,7 @@ function renderScalePage() {
         <div style="max-width: 1000px; margin: 0 auto; padding-bottom: 40px;">
             <div style="text-align: center; margin-bottom: 32px;">
                 <p style="color: var(--text-secondary); max-width: 700px; margin: 0 auto; line-height: 1.6;">
-                    GridLock 2.0 is designed to scale from this ${totalEvents.toLocaleString()}-event proof of concept to a city-wide intelligence layer integrating real-time Astram data, CCTV feeds, and ML models.
+                    The Prototype is designed to scale from this ${totalEvents.toLocaleString()}-event proof of concept to a city-wide intelligence layer integrating real-time Astram data, CCTV feeds, and ML models.
                 </p>
             </div>
             
