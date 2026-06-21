@@ -121,7 +121,7 @@ $$\text{BSS} = 0.20 \cdot W_{\text{cause}} + 0.12 \cdot W_{\text{type}} + 0.22 \
 * **$W_{\text{closure}}$ (Road Closure Requirement):** $1.0$ if the event requires blocking traffic lanes, $0.2$ otherwise.
 * **$W_{\text{priority}}$ (Police Priority Rating):** $1.0$ if marked High Priority, $0.35$ otherwise.
 * **$I_{\text{corridor}}$ (Corridor Importance Index):** Logarithmic scale based on incident density relative to busiest corridor:
-  $$I_{\text{corridor}} = \min\left(\frac{N_{\text{corridor-events}}}{N_{\text{max-corridor-events}}}, 1.0\right)$$
+  $$I_{\text{corridor}} = \min\left(\frac{N_{\text{corridor\_events}}}{N_{\text{max\_corridor\_events}}}, 1.0\right)$$
 * **$M_{\text{time}}$ (Time Multiplier):** Bounded between $0.45$ and $1.0$ based on peak hour overlaps (IST):
   * Peak (08:00–11:00, 17:00–20:00): $1.0$
   * Shoulder (07:00–12:00, 16:00–21:00): $0.8$
@@ -159,7 +159,7 @@ The pipeline compiles a Dijkstra-ready routing graph representing junctions and 
   * Same-Corridor Threshold: $\le 3.5\text{ km}$
   * Cross-Corridor Threshold: $\le 2.0\text{ km}$
 * **Edge Weight Formulation:** Incorporates both haversine distance and junction vulnerability to penalize route options that pass through historically congested zones:
-  $$\text{Edge Weight} = \text{Distance (km)} \cdot \left(1 + \frac{V_{\text{junction-A}} + V_{\text{junction-B}}}{2}\right)$$
+  $$\text{Edge Weight} = \text{Distance (km)} \cdot \left(1 + \frac{V_{\text{junction\_A}} + V_{\text{junction\_B}}}{2}\right)$$
   Where $V_{\text{junction}}$ is the junction's vulnerability score (derived from closure rates and priority incident frequency).
 
 ---
