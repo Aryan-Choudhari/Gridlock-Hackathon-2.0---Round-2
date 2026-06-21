@@ -174,7 +174,6 @@ GridLock 2.0 uses a highly optimized, zero-compilation build architecture design
 | **Mapping Engine** | Leaflet.js (1.9.4) + CartoDB Dark Tiles | Lightweight, high-performance mapping; doesn't require API keys or billing setup. |
 | **Visual Analytics** | Chart.js (4.4.0) + Datalabels Plugin | Hardware-accelerated canvas chart rendering with clean layout overlays. |
 | **Data Processing** | Python 3 (stdlib: `csv`, `concurrent.futures`, `heapq`) | Fast concurrent CSV parsing; generates self-contained JSON data assets. |
-| **Testing / Validation**| Headless Puppeteer (Node.js) | Automated UI layout checks and console error auditing. |
 
 ---
 
@@ -187,11 +186,7 @@ GridLock_Submission/
 ├── app.js                            # Core frontend logic: metrics, simulator, diversion router, mapping
 ├── process_data.py                   # Python data-engineering pipeline (CSV → JSON compiler)
 ├── processed_data.json               # Compiled static database containing processed graph data
-├── Astram event data_anonymized.csv  # Raw dataset containing 8,173 BTP event records
-├── run_puppeteer.js                  # Automated browser testing validation script
-├── validate.js                       # Presentation slide count validation helper
-├── presentation.html                 # Embedded slide deck summarizing system capabilities
-├── package.json                      # Node.js manifest (specifies Puppeteer dev dependency)
+├── Astram event data_anonymized - Astram event data_anonymizedb40ac87.csv  # Raw dataset containing 8,173 BTP event records
 └── README.md                         # This file
 ```
 
@@ -259,19 +254,6 @@ To verify the system's client-side fallback mode:
 2. Reload `http://localhost:8080`.
 3. The loading screen will display `JSON not found, parsing CSV...`.
 4. The frontend will parse the raw CSV in-browser, rebuild the metrics, and run normally.
-
----
-
-### Option D: Run Automated Validation Tests
-To run headless integration tests and verify there are no JavaScript errors on launch:
-1. Install testing dependencies:
-   ```bash
-   npm install
-   ```
-2. Execute the Puppeteer validation suite:
-   ```bash
-   node run_puppeteer.js
-   ```
 
 ---
 
