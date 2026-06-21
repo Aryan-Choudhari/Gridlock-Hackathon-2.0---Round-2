@@ -12,6 +12,12 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <!-- Leaflet.heat heatmap plugin -->
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <!-- Leaflet.markercluster -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -147,6 +153,11 @@
                                     <option value="unplanned">Unplanned</option>
                                 </select>
                             </div>
+                            <div class="map-layer-toggle" id="map-layer-toggle">
+                                <button class="layer-btn active" data-layer="heatmap" id="btn-layer-heatmap">🔥 Heatmap</button>
+                                <button class="layer-btn" data-layer="clusters" id="btn-layer-clusters">📍 Clusters</button>
+                                <button class="layer-btn" data-layer="both" id="btn-layer-both">✨ Both</button>
+                            </div>
                         </div>
                         <div id="dashboard-map" class="map-container"></div>
                     </div>
@@ -198,6 +209,17 @@
                         </div>
                         <div class="chart-container">
                             <canvas id="monthly-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Weekly Congestion Heatmap -->
+                    <div class="card" id="weekly-heatmap-card" style="grid-column: 1 / -1;">
+                        <div class="card-header">
+                            <h3>🌡️ Weekly Congestion Heatmap (Day × Hour)</h3>
+                            <span style="font-size: 12px; color: var(--text-muted);">Historical incident density — darker = higher congestion risk</span>
+                        </div>
+                        <div id="weekly-heatmap-container" style="overflow-x: auto;">
+                            <canvas id="weekly-heatmap-canvas"></canvas>
                         </div>
                     </div>
                 </div>
@@ -295,6 +317,12 @@
                                     <div class="score-value" id="score-value">0</div>
                                 </div>
                                 <div class="score-label" id="score-label">Calculating...</div>
+                            </div>
+                        </div>
+                        <div class="card result-radar-card">
+                            <div class="card-header"><h3>📡 Score Factor Radar</h3></div>
+                            <div class="chart-container" style="height:240px;">
+                                <canvas id="bss-radar-chart"></canvas>
                             </div>
                         </div>
                         <div class="card result-breakdown-card">

@@ -27,6 +27,37 @@ const CHART_COLORS = [
     '#ef4444', '#ec4899', '#d946ef', '#64748b', '#78716c'
 ];
 
+// ── Toast notification system ────────────────────────────
+const toastContainer = document.createElement('div');
+toastContainer.id = 'toast-container';
+document.body.appendChild(toastContainer);
+
+function showToast(msg, type = 'info', duration = 3000) {
+    const icons = { info: 'ℹ️', success: '✅', warning: '⚠️', error: '❌' };
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `<span>${icons[type] || 'ℹ️'}</span><span>${msg}</span>`;
+    toastContainer.appendChild(toast);
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100px)';
+        toast.style.transition = '0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+}
+
+// ── Live Clock ──────────────────────────────────────────
+function startLiveClock() {
+    const clockEl = document.getElementById('live-clock');
+    if (!clockEl) return;
+    function tick() {
+        const now = new Date();
+        clockEl.textContent = now.toLocaleTimeString('en-IN', { hour12: false, timeZone: 'Asia/Kolkata' }) + ' IST';
+    }
+    tick();
+    setInterval(tick, 1000);
+}
+
 const GRADIENT_PAIRS = [
     ['#6366f1', '#818cf8'],
     ['#8b5cf6', '#a78bfa'],
@@ -81,6 +112,19 @@ async function initApp() {
     
     updateLoader(100, 'Ready!');
     
+    // Add live clock to top bar
+    {
+        const topBarRight = document.querySelector('.top-bar-right');
+        if (topBarRight && !document.getElementById('live-clock')) {
+            const clockEl = document.createElement('div');
+            clockEl.id = 'live-clock';
+            clockEl.className = 'live-clock';
+            clockEl.textContent = '00:00:00 IST';
+            topBarRight.appendChild(clockEl);
+            startLiveClock();
+        }
+    }
+
     // Show UI immediately
     setTimeout(() => {
         document.getElementById('loading-screen').classList.add('fade-out');
@@ -125,7 +169,7 @@ async function parseCSVDirectly() {
             lat, lng,
             cause: row.event_cause || 'others',
             requires_road_closure: row.requires_road_closure === 'TRUE',
-            start_datetime: row.start_datetime || '',
+            start_datetime: row.start_datetime ? row.start_datetime.replace(' ', 'T').replace('+00', 'Z') : '',
             corridor: row.corridor || 'Non-corridor',
             priority: row.priority || 'Low',
             zone: (row.zone && row.zone !== 'NULL') ? row.zone : '',
@@ -141,7 +185,8 @@ async function parseCSVDirectly() {
         // Hourly (convert UTC to IST)
         if (event.start_datetime && event.start_datetime !== 'NULL') {
             try {
-                const dt = new Date(event.start_datetime.replace('+00', 'Z'));
+                const dtStr = event.start_datetime.replace(' ', 'T').replace('+00', 'Z');
+                const dt = new Date(dtStr);
                 if (!isNaN(dt)) {
                     const istHour = (dt.getUTCHours() + 5 + Math.floor((dt.getUTCMinutes() + 30) / 60)) % 24;
                     hourly[istHour]++;
@@ -382,6 +427,7 @@ function renderDashboard() {
     renderCauseChart();
     renderDOWChart();
     renderMonthlyChart();
+    setTimeout(() => renderWeeklyHeatmap(), 100);
 }
 
 function renderDashboardStats(selectedDatetime) {
@@ -454,6 +500,7 @@ function renderHourlyChart() {
     const gradient = createGradient(ctx, 'rgba(99, 102, 241, 0.6)', 'rgba(99, 102, 241, 0.05)');
     const borderGradient = createGradient(ctx, '#6366f1', '#8b5cf6', false);
     
+    if (charts.hourly) charts.hourly.destroy();
     charts.hourly = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -498,6 +545,7 @@ function renderCorridorChart() {
     
     const top10 = DATA.corridors.filter(c => c.name !== 'Non-corridor').slice(0, 10);
     
+    if (charts.corridor) charts.corridor.destroy();
     charts.corridor = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -549,6 +597,7 @@ function renderCauseChart() {
         .sort((a, b) => b[1].count - a[1].count)
         .slice(0, 10);
     
+    if (charts.cause) charts.cause.destroy();
     charts.cause = new Chart(ctx, {
         type: 'doughnut',
         data: {
@@ -588,11 +637,26 @@ function renderDOWChart() {
     if (!ctx) return;
     
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    const dowData = DATA.day_of_week_distribution;
-    const values = days.map(d => dowData[d] || 0);
+    let values = [0, 0, 0, 0, 0, 0, 0];
+
+    // Bulletproof fallback: Calculate DOW dynamically from raw events
+    if (DATA && DATA.events) {
+        DATA.events.forEach(event => {
+            if (event.start_datetime && event.start_datetime !== 'NULL') {
+                const dt = new Date(event.start_datetime);
+                if (!isNaN(dt)) {
+                    // JavaScript getDay() returns 0 for Sunday. 
+                    // We adjust it so 0 = Monday, 6 = Sunday to match your chart labels.
+                    const dayIndex = (dt.getDay() + 6) % 7;
+                    values[dayIndex]++;
+                }
+            }
+        });
+    }
     
     const gradient = createGradient(ctx, 'rgba(139, 92, 246, 0.5)', 'rgba(139, 92, 246, 0.02)');
     
+    if (charts.dow) charts.dow.destroy();
     charts.dow = new Chart(ctx, {
         type: 'line',
         data: {
@@ -639,10 +703,14 @@ function renderMonthlyChart() {
     
     const gradient = createGradient(ctx, 'rgba(59, 130, 246, 0.4)', 'rgba(59, 130, 246, 0.02)');
     
+    if (charts.monthly) charts.monthly.destroy();
     charts.monthly = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: months.map(m => { const [y, mo] = m.split('-'); return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(mo) - 1] + ' ' + y.slice(2); }),
+            labels: months.map(m => { 
+                const [y, mo] = m.split('-'); 
+                return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(mo, 10) - 1] + ' ' + y.slice(2); 
+            }),
             datasets: [{
                 label: 'Events',
                 data: values,
@@ -690,7 +758,137 @@ function initDashboardMap() {
     }).addTo(dashboardMap);
     
     renderMapMarkers();
-    setTimeout(() => dashboardMap.invalidateSize(), 200);
+    setTimeout(() => {
+        dashboardMap.invalidateSize();
+        addMapLegend();
+        setupLayerToggle();
+    }, 200);
+}
+
+function addMapLegend() {
+    if (!dashboardMap) return;
+    const legend = L.control({ position: 'bottomright' });
+    legend.onAdd = function() {
+        const div = L.DomUtil.create('div', 'map-legend');
+        div.innerHTML = `
+            <h4>Event Causes</h4>
+            <div class="map-legend-item"><div class="map-legend-dot" style="background:#f59e0b"></div>Vehicle Breakdown</div>
+            <div class="map-legend-item"><div class="map-legend-dot" style="background:#ef4444"></div>Accident / Protest</div>
+            <div class="map-legend-item"><div class="map-legend-dot" style="background:#6366f1"></div>Construction</div>
+            <div class="map-legend-item"><div class="map-legend-dot" style="background:#3b82f6"></div>Water Logging</div>
+            <div class="map-legend-item"><div class="map-legend-dot" style="background:#ec4899"></div>Public Event</div>
+            <div class="map-legend-item"><div class="map-legend-dot" style="background:#22c55e"></div>Tree Fall</div>
+            <div class="map-legend-item"><div class="map-legend-dot" style="background:#f97316"></div>Pot Holes</div>
+        `;
+        return div;
+    };
+    legend.addTo(dashboardMap);
+}
+
+function setupLayerToggle() {
+    document.querySelectorAll('.layer-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.layer-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentMapLayer = btn.dataset.layer;
+            const causeFilter = document.getElementById('map-filter-cause')?.value || 'all';
+            const typeFilter = document.getElementById('map-filter-type')?.value || 'all';
+            const dt = new Date(document.getElementById('dashboard-date-filter')?.value || '2024-03-15T18:00');
+            renderMapMarkers(causeFilter, typeFilter, dt);
+            showToast(`Map view: ${btn.textContent.trim()}`, 'info', 1500);
+        });
+    });
+}
+
+function renderWeeklyHeatmap() {
+    if (!DATA || !DATA.weekly_heatmap) return;
+    const canvas = document.getElementById('weekly-heatmap-canvas');
+    if (!canvas) return;
+
+    const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const matrix = DATA.weekly_heatmap;
+
+    const CELL_W = 38;
+    const CELL_H = 28;
+    const LABEL_W = 38;
+    const LABEL_H = 24;
+    const PAD = 8;
+
+    const totalW = LABEL_W + 24 * CELL_W + PAD * 2;
+    const totalH = LABEL_H + 7 * CELL_H + PAD * 2;
+
+    canvas.width = totalW;
+    canvas.height = totalH;
+    canvas.style.height = totalH + 'px';
+
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, totalW, totalH);
+
+    function heatColor(v) {
+        const stops = [
+            [0.0,  [10, 14, 23]],
+            [0.15, [30, 27, 75]],
+            [0.35, [99, 102, 241]],
+            [0.55, [139, 92, 246]],
+            [0.75, [249, 115, 22]],
+            [1.0,  [239, 68, 68]],
+        ];
+        for (let i = 1; i < stops.length; i++) {
+            if (v <= stops[i][0]) {
+                const t = (v - stops[i-1][0]) / (stops[i][0] - stops[i-1][0]);
+                const [r1,g1,b1] = stops[i-1][1];
+                const [r2,g2,b2] = stops[i][1];
+                return `rgb(${Math.round(r1+(r2-r1)*t)},${Math.round(g1+(g2-g1)*t)},${Math.round(b1+(b2-b1)*t)})`;
+            }
+        }
+        return `rgb(239,68,68)`;
+    }
+
+    ctx.font = '9px Inter, sans-serif';
+    ctx.fillStyle = '#64748b';
+    ctx.textAlign = 'center';
+    for (let h = 0; h < 24; h++) {
+        if (h % 3 === 0) {
+            ctx.fillText(h + 'h', LABEL_W + h * CELL_W + CELL_W / 2 + PAD, LABEL_H - 4 + PAD);
+        }
+    }
+
+    ctx.textAlign = 'right';
+    ctx.font = '10px Inter, sans-serif';
+    for (let d = 0; d < 7; d++) {
+        const y = LABEL_H + d * CELL_H + PAD;
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText(DAYS[d], LABEL_W - 4 + PAD, y + CELL_H / 2 + 4);
+        for (let h = 0; h < 24; h++) {
+            const x = LABEL_W + h * CELL_W + PAD;
+            const val = matrix[d] ? (matrix[d][h] || 0) : 0;
+            ctx.fillStyle = heatColor(val);
+            ctx.fillRect(x + 1, y + 1, CELL_W - 2, CELL_H - 2);
+            if (val > 0.55) {
+                ctx.fillStyle = 'rgba(255,255,255,0.85)';
+                ctx.font = '8px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(Math.round(val * 100) + '%', x + CELL_W / 2, y + CELL_H / 2 + 3);
+                ctx.font = '10px Inter, sans-serif';
+                ctx.textAlign = 'right';
+            }
+        }
+    }
+
+    // Tooltip on hover
+    canvas.onmousemove = function(e) {
+        const rect = canvas.getBoundingClientRect();
+        const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+        const my = (e.clientY - rect.top) * (canvas.height / rect.height);
+        const col = Math.floor((mx - LABEL_W - PAD) / CELL_W);
+        const row = Math.floor((my - LABEL_H - PAD) / CELL_H);
+        if (col >= 0 && col < 24 && row >= 0 && row < 7 && matrix[row]) {
+            const val = matrix[row][col] || 0;
+            canvas.title = `${DAYS[row]} ${col}:00–${col+1}:00 — Congestion Risk: ${Math.round(val * 100)}%`;
+        } else {
+            canvas.title = '';
+        }
+    };
 }
 
 function initDiversionMap() {
@@ -710,92 +908,119 @@ function initDiversionMap() {
 }
 
 let mapMarkerLayer = null;
+let mapHeatLayer = null;
+let mapClusterLayer = null;
+let currentMapLayer = 'heatmap';
 
 function renderMapMarkers(causeFilter = 'all', typeFilter = 'all', targetDt = null) {
     if (!dashboardMap || !DATA) return;
-    
-    if (mapMarkerLayer) dashboardMap.removeLayer(mapMarkerLayer);
-    
-    const markers = L.layerGroup();
-    
+
+    if (mapMarkerLayer) { dashboardMap.removeLayer(mapMarkerLayer); mapMarkerLayer = null; }
+    if (mapHeatLayer) { dashboardMap.removeLayer(mapHeatLayer); mapHeatLayer = null; }
+    if (mapClusterLayer) { dashboardMap.removeLayer(mapClusterLayer); mapClusterLayer = null; }
+
     const causeColors = {
         vehicle_breakdown: '#f59e0b', accident: '#ef4444', construction: '#6366f1',
         public_event: '#ec4899', procession: '#d946ef', vip_movement: '#a78bfa',
         tree_fall: '#22c55e', water_logging: '#3b82f6', pot_holes: '#f97316',
         congestion: '#ef4444', protest: '#dc2626', road_conditions: '#64748b', others: '#94a3b8',
     };
-    
-    // Filter events
+
     let filtered = DATA.events;
     if (causeFilter !== 'all') filtered = filtered.filter(e => e.cause === causeFilter);
     if (typeFilter !== 'all') filtered = filtered.filter(e => e.event_type === typeFilter);
-    
-    // Apply datetime filtering if provided
     if (targetDt) {
         const targetDateStr = targetDt.toISOString().split('T')[0];
-        filtered = filtered.filter(e => {
-            if (!e.start_datetime) return false;
-            return e.start_datetime.startsWith(targetDateStr);
-        });
+        filtered = filtered.filter(e => e.start_datetime && e.start_datetime.startsWith(targetDateStr));
     }
-    
-    if (filtered.length === 0) {
-        // Fallback: Add some hotspot circles if no events for the day
-        const hotspots = (DATA.hotspots || []).slice(0, 10);
+
+    if (filtered.length === 0 && targetDt) {
+        const hotspots = (DATA.hotspots || []).slice(0, 15);
+        const fallbackLayer = L.layerGroup();
         hotspots.forEach(h => {
-            L.circle([h.lat, h.lng], {
-                radius: 150,
-                fillColor: `hsl(0, 0%, 50%)`,
-                fillOpacity: 0.2,
-                stroke: false,
-            }).addTo(markers);
+            L.circle([h.lat, h.lng], { radius: 200, fillColor: '#6366f1', fillOpacity: 0.15, stroke: false }).addTo(fallbackLayer);
+        });
+        mapMarkerLayer = fallbackLayer;
+        fallbackLayer.addTo(dashboardMap);
+        return;
+    }
+
+    // Build HEATMAP layer (Leaflet.heat)
+    if (typeof L.heatLayer === 'function') {
+        const heatPoints = filtered.map(e => [
+            e.lat, e.lng,
+            e.requires_road_closure ? 1.0 : (e.priority === 'High' ? 0.6 : 0.3)
+        ]);
+        mapHeatLayer = L.heatLayer(heatPoints, {
+            radius: 18, blur: 22, maxZoom: 16, max: 1.0,
+            gradient: { 0.1: '#3b82f6', 0.4: '#8b5cf6', 0.6: '#f59e0b', 0.8: '#f97316', 1.0: '#ef4444' },
         });
     }
-    
-    // AGGRESSIVE sampling: cap at 500 markers for smooth rendering
-    const MAX_MARKERS = 500;
-    const step = filtered.length > MAX_MARKERS ? Math.ceil(filtered.length / MAX_MARKERS) : 1;
-    
-    for (let i = 0; i < filtered.length; i += step) {
-        const event = filtered[i];
-        const color = causeColors[event.cause] || '#94a3b8';
-        const size = event.requires_road_closure ? 8 : 4;
-        
-        const marker = L.circleMarker([event.lat, event.lng], {
-            radius: size,
-            fillColor: color,
-            fillOpacity: event.requires_road_closure ? 0.8 : 0.65,
-            stroke: event.requires_road_closure,
-            color: event.requires_road_closure ? '#ef4444' : '#fff',
-            weight: event.requires_road_closure ? 2.5 : 0,
+
+    // Build CLUSTER layer
+    const MAX_CLUSTER = 2000;
+    if (typeof L.markerClusterGroup === 'function') {
+        const clusterGroup = L.markerClusterGroup({
+            chunkedLoading: true,
+            maxClusterRadius: 50,
+            showCoverageOnHover: false,
+            iconCreateFunction: function(cluster) {
+                const count = cluster.getChildCount();
+                let cls = 'small', size = 36;
+                if (count >= 100) { cls = 'large'; size = 52; }
+                else if (count >= 20) { cls = 'medium'; size = 44; }
+                return L.divIcon({
+                    html: `<div style="width:${size}px;height:${size}px;line-height:${size}px;text-align:center;border-radius:50%;font-size:${size > 40 ? 13 : 11}px;">${count}</div>`,
+                    className: `marker-cluster marker-cluster-${cls}`,
+                    iconSize: [size, size]
+                });
+            }
         });
-        
-        // Lazy popup — only build content on click
-        marker.on('click', function() {
-            this.bindPopup(`
-                <div class="popup-title">${event.cause.replace(/_/g, ' ').toUpperCase()}</div>
-                <div class="popup-detail">
-                    <strong>Corridor:</strong> ${event.corridor}<br>
-                    ${event.junction ? `<strong>Junction:</strong> ${event.junction}<br>` : ''}
-                    <strong>Type:</strong> ${event.event_type} | <strong>Priority:</strong> ${event.priority}<br>
-                    <strong>Road Closure:</strong> ${event.requires_road_closure ? '🔴 Yes' : '🟢 No'}
-                </div>
-            `).openPopup();
-        });
-        
-        marker.addTo(markers);
+        const step = filtered.length > MAX_CLUSTER ? Math.ceil(filtered.length / MAX_CLUSTER) : 1;
+        for (let i = 0; i < filtered.length; i += step) {
+            const event = filtered[i];
+            const color = causeColors[event.cause] || '#94a3b8';
+            const marker = L.circleMarker([event.lat, event.lng], {
+                radius: event.requires_road_closure ? 9 : 5,
+                fillColor: color,
+                fillOpacity: event.requires_road_closure ? 0.9 : 0.7,
+                stroke: event.requires_road_closure,
+                color: event.requires_road_closure ? '#fff' : color,
+                weight: 2,
+            });
+            marker.on('click', function() {
+                this.bindPopup(`
+                    <div class="popup-title">${event.cause.replace(/_/g, ' ').toUpperCase()}</div>
+                    <div class="popup-detail">
+                        <strong>Corridor:</strong> ${event.corridor}<br>
+                        ${event.junction ? `<strong>Junction:</strong> ${event.junction}<br>` : ''}
+                        <strong>Type:</strong> ${event.event_type} | <strong>Priority:</strong> ${event.priority}<br>
+                        <strong>Road Closure:</strong> ${event.requires_road_closure ? '\U0001f534 Yes' : '\U0001f7e2 No'}<br>
+                        <strong>Status:</strong> ${event.status}
+                    </div>
+                `).openPopup();
+            });
+            clusterGroup.addLayer(marker);
+        }
+        mapClusterLayer = clusterGroup;
     }
-    
-    mapMarkerLayer = markers;
-    markers.addTo(dashboardMap);
+
+    if (currentMapLayer === 'heatmap' || currentMapLayer === 'both') {
+        if (mapHeatLayer) mapHeatLayer.addTo(dashboardMap);
+    }
+    if (currentMapLayer === 'clusters' || currentMapLayer === 'both') {
+        if (mapClusterLayer) mapClusterLayer.addTo(dashboardMap);
+    }
 }
 
 let diversionGraphLayer = null;
+let currentDiversionHighlightLayer = null;
 
 function renderDiversionGraph() {
     if (!diversionMap || !DATA || !DATA.diversion_graph) return;
     
     if (diversionGraphLayer) diversionMap.removeLayer(diversionGraphLayer);
+    if (currentDiversionHighlightLayer) diversionMap.removeLayer(currentDiversionHighlightLayer);
     
     const layer = L.layerGroup();
     const { nodes, edges } = DATA.diversion_graph;
@@ -807,8 +1032,8 @@ function renderDiversionGraph() {
     
     for (let i = 0; i < sameCorridorEdges.length; i += edgeStep) {
         const edge = sameCorridorEdges[i];
-        const from = nodes[edge.from];
-        const to = nodes[edge.to];
+        const from = nodes.find(n => n.id === edge.from);
+        const to = nodes.find(n => n.id === edge.to);
         if (!from || !to) continue;
         
         L.polyline([[from.lat, from.lng], [to.lat, to.lng]], {
@@ -893,6 +1118,71 @@ function calculateImpactScore(params) {
     return Math.round(bss * 100) / 100;
 }
 
+function renderBSSRadar(params, bss) {
+    const ctx = document.getElementById('bss-radar-chart')?.getContext('2d');
+    if (!ctx) return;
+
+    const causeScores = {
+        public_event: 1.0, protest: 0.95, procession: 0.9, vip_movement: 0.85,
+        accident: 0.8, construction: 0.7, water_logging: 0.6, tree_fall: 0.55,
+        congestion: 0.5, vehicle_breakdown: 0.45, pot_holes: 0.35, road_conditions: 0.3, others: 0.25,
+    };
+    const corr = DATA.corridors.find(c => c.name === params.corridor);
+    const maxEv = DATA.corridors[0]?.total_events || 1;
+    const corrImportance = corr ? Math.min(corr.total_events / maxEv, 1.0) : 0.3;
+    const h = params.hour;
+    const timeMult = ((h >= 8 && h <= 11) || (h >= 17 && h <= 20)) ? 1.0 : ((h >= 6 && h <= 12) || (h >= 15 && h <= 21)) ? 0.8 : 0.5;
+
+    const factors = [
+        Math.round((causeScores[params.cause] || 0.3) * 100),
+        Math.round((params.road_closure ? 1.0 : 0.3) * 100),
+        Math.round((params.event_type === 'planned' ? 1.0 : 0.7) * 100),
+        Math.round((params.priority === 'High' ? 1.0 : 0.4) * 100),
+        Math.round(corrImportance * 100),
+        Math.round(timeMult * 100),
+        Math.round(Math.min(params.duration / 24, 1.0) * 100),
+    ];
+    const labels = ['Cause Risk', 'Road Closure', 'Event Type', 'Priority', 'Corridor Load', 'Time of Day', 'Duration'];
+
+    if (charts.bssRadar) charts.bssRadar.destroy();
+    charts.bssRadar = new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels,
+            datasets: [{
+                label: 'BSS Factors',
+                data: factors,
+                backgroundColor: 'rgba(99,102,241,0.18)',
+                borderColor: '#6366f1',
+                borderWidth: 2,
+                pointBackgroundColor: '#8b5cf6',
+                pointRadius: 4,
+                pointHoverRadius: 6,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                r: {
+                    min: 0, max: 100,
+                    ticks: { stepSize: 25, color: '#64748b', font: { size: 9 }, backdropColor: 'transparent' },
+                    grid: { color: 'rgba(71,85,105,0.2)' },
+                    pointLabels: { color: '#94a3b8', font: { size: 10 } },
+                    angleLines: { color: 'rgba(71,85,105,0.2)' },
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(17,24,39,0.95)',
+                    callbacks: { label: ctx => `${ctx.label}: ${ctx.raw}%` }
+                }
+            }
+        }
+    });
+}
+
 function getBarricadeCategory(bss) {
     if (bss >= 0.8) return { level: 'Full Closure', class: 'badge-critical', type: 'Jersey barriers + Complete road block + Multi-point', equipment: 'Jersey barriers ×8, Metal barricades ×12, Cones ×20, Sign boards ×6, Blinkers ×8' };
     if (bss >= 0.6) return { level: 'Partial Closure', class: 'badge-high', type: 'Cones + Movable barriers + Lane restriction', equipment: 'Metal barricades ×6, Cones ×15, Sign boards ×4, Blinkers ×4' };
@@ -961,6 +1251,9 @@ function renderPrediction(params) {
     // Show results
     document.getElementById('predictor-results').style.display = '';
     
+    // Render BSS Radar Chart
+    renderBSSRadar(params, bss);
+
     // Animate score ring
     const scoreFill = document.getElementById('score-fill');
     const scoreValue = document.getElementById('score-value');
@@ -1150,8 +1443,8 @@ function findDiversions(corridor, junction) {
     // Find alternative routes: adjacent corridors connected to this one
     const connectedCorridors = new Map();
     edges.forEach(edge => {
-        const fromNode = nodes[edge.from];
-        const toNode = nodes[edge.to];
+        const fromNode = nodes.find(n => n.id === edge.from);
+        const toNode = nodes.find(n => n.id === edge.to);
         if (!fromNode || !toNode) return;
         
         if (blockedNodeIds.has(edge.from) && !blockedNodeIds.has(edge.to)) {
@@ -1236,51 +1529,68 @@ function findDiversions(corridor, junction) {
 
 function highlightDiversionOnMap(blockedCorridor, blockedNodes, connectedCorridors, nodes, edges) {
     if (!diversionMap) return;
-    
+
     // Reset map
     renderDiversionGraph();
-    
-    // Highlight blocked corridor in red
+
+    if (currentDiversionHighlightLayer) {
+        diversionMap.removeLayer(currentDiversionHighlightLayer);
+    }
+    const highlightGroup = L.layerGroup().addTo(diversionMap);
+    currentDiversionHighlightLayer = highlightGroup;
+
+    // Highlight blocked corridor in red (using real road geometry via OSRM)
     const blockedNodeIds = new Set(blockedNodes.map(n => n.id));
+    const redSegments = [];
     edges.forEach(edge => {
-        const from = nodes[edge.from];
-        const to = nodes[edge.to];
+        const from = nodes.find(n => n.id === edge.from);
+        const to = nodes.find(n => n.id === edge.to);
         if (!from || !to) return;
-        
         if (blockedNodeIds.has(edge.from) && blockedNodeIds.has(edge.to)) {
-            L.polyline([[from.lat, from.lng], [to.lat, to.lng]], {
-                color: '#ef4444',
-                weight: 4,
-                opacity: 0.9,
-            }).addTo(diversionMap);
+            redSegments.push([from, to]);
         }
     });
-    
+
+    // Fetch & draw blocked segments in red
+    redSegments.forEach(([from, to]) => {
+        fetchRoadRoute(from.lat, from.lng, to.lat, to.lng).then(coords => {
+            L.polyline(coords, {
+                color: '#ef4444',
+                weight: 5,
+                opacity: 0.9,
+            }).addTo(highlightGroup);
+        });
+    });
+
     // Highlight blocked junctions
     blockedNodes.forEach(n => {
         L.circleMarker([n.lat, n.lng], {
-            radius: 8,
+            radius: 10,
             fillColor: '#ef4444',
-            fillOpacity: 0.9,
+            fillOpacity: 0.95,
             stroke: true,
             color: '#fff',
             weight: 2,
-        }).addTo(diversionMap);
+        }).bindTooltip(`🚫 Blocked: ${n.name}`, { permanent: false, direction: 'top' }).addTo(highlightGroup);
     });
-    
-    // Highlight alternative routes in green
+
+    // Highlight alternative routes in green using real road geometry
+    const allAltCoords = [];
     connectedCorridors.forEach((connections) => {
         connections.forEach(conn => {
             const fromNode = nodes.find(n => n.name === conn.from);
             const toNode = nodes.find(n => n.name === conn.to);
             if (fromNode && toNode) {
-                L.polyline([[fromNode.lat, fromNode.lng], [toNode.lat, toNode.lng]], {
-                    color: '#10b981',
-                    weight: 4,
-                    opacity: 0.9,
-                    dashArray: '8 4',
-                }).addTo(diversionMap);
-                
+                allAltCoords.push([fromNode.lat, fromNode.lng]);
+                allAltCoords.push([toNode.lat, toNode.lng]);
+                fetchRoadRoute(fromNode.lat, fromNode.lng, toNode.lat, toNode.lng).then(coords => {
+                    L.polyline(coords, {
+                        color: '#10b981',
+                        weight: 5,
+                        opacity: 0.95,
+                        dashArray: '10 5',
+                    }).addTo(highlightGroup);
+                });
                 L.circleMarker([toNode.lat, toNode.lng], {
                     radius: 8,
                     fillColor: '#10b981',
@@ -1288,15 +1598,38 @@ function highlightDiversionOnMap(blockedCorridor, blockedNodes, connectedCorrido
                     stroke: true,
                     color: '#fff',
                     weight: 2,
-                }).addTo(diversionMap);
+                }).bindTooltip(`✅ Via: ${toNode.name}`, { permanent: false, direction: 'top' }).addTo(highlightGroup);
             }
         });
     });
-    
-    // Fit bounds
-    const allCoords = [...blockedNodes.map(n => [n.lat, n.lng])];
-    if (allCoords.length > 0) {
-        diversionMap.fitBounds(allCoords, { padding: [50, 50] });
+
+    // Fit bounds to all relevant coords
+    const boundsCoords = [
+        ...blockedNodes.map(n => [n.lat, n.lng]),
+        ...allAltCoords,
+    ];
+    if (boundsCoords.length > 0) {
+        diversionMap.fitBounds(boundsCoords, { padding: [50, 50] });
+    }
+}
+
+/**
+ * Fetch a real road-following route between two lat/lng points
+ * using the free OSRM demo server. Falls back to straight line if offline.
+ * @returns {Promise<Array<[lat, lng]>>}
+ */
+async function fetchRoadRoute(lat1, lng1, lat2, lng2) {
+    const fallback = [[lat1, lng1], [lat2, lng2]];
+    try {
+        const url = `https://router.project-osrm.org/route/v1/driving/${lng1},${lat1};${lng2},${lat2}?overview=full&geometries=geojson&steps=false`;
+        const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+        if (!res.ok) return fallback;
+        const data = await res.json();
+        if (!data.routes || data.routes.length === 0) return fallback;
+        // GeoJSON coords are [lng, lat] — flip to [lat, lng] for Leaflet
+        return data.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+    } catch (e) {
+        return fallback;
     }
 }
 
@@ -1347,6 +1680,7 @@ function renderBarricadingPage() {
     // BSS Distribution Chart
     const ctx1 = document.getElementById('bss-distribution-chart')?.getContext('2d');
     if (ctx1) {
+        if (charts.bssDist) charts.bssDist.destroy();
         charts.bssDist = new Chart(ctx1, {
             type: 'doughnut',
             data: {
@@ -1374,6 +1708,7 @@ function renderBarricadingPage() {
     const ctx2 = document.getElementById('barricade-cause-chart')?.getContext('2d');
     if (ctx2) {
         const causeLabels = Object.keys(causeBSS).slice(0, 8);
+        if (charts.barricadeCause) charts.barricadeCause.destroy();
         charts.barricadeCause = new Chart(ctx2, {
             type: 'bar',
             data: {
@@ -1451,6 +1786,7 @@ function renderManpowerPage() {
     // Zone chart
     const ctx1 = document.getElementById('manpower-zone-chart')?.getContext('2d');
     if (ctx1) {
+        if (charts.manpowerZone) charts.manpowerZone.destroy();
         charts.manpowerZone = new Chart(ctx1, {
             type: 'bar',
             data: {
@@ -1489,6 +1825,7 @@ function renderManpowerPage() {
             { cause: 'vehicle_breakdown', label: 'Breakdown', base: 2 },
         ];
         
+        if (charts.manpowerEvent) charts.manpowerEvent.destroy();
         charts.manpowerEvent = new Chart(ctx2, {
             type: 'bar',
             data: {

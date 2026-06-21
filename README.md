@@ -235,18 +235,18 @@ python3 process_data.py
 ```text
 Reading CSV: Astram event data_anonymized - Astram event data_anonymizedb40ac87.csv
 Processing …
-  → 8173 valid events loaded
+  → 8155 valid events loaded
   → Computing BSS scores …
   → Computing hotspots …
   → Building diversion graph …
 Writing JSON: processed_data.json
-  → Total events:        8173
+  → Total events:        8155
   → Corridors:           22
   → Junctions:           294
   → Zones:               10
   → Hotspots:            30
-  → Graph nodes/edges:   294/2474
-  → Cause categories:    12
+  → Graph nodes/edges:   294/3519
+  → Cause categories:    13
   → Repeat offenders:    15
 Done ✓
 ```
@@ -278,17 +278,20 @@ To run headless integration tests and verify there are no JavaScript errors on l
 ## 🖥️ Detailed Feature Walkthrough
 
 ### 1. Dashboard Overview
-* **KPI Metrics:** Tracks total records, road closures, active issues, and monitored corridors.
+* **KPI Metrics & Clock:** Tracks total records, road closures, active issues, and monitored corridors, alongside a Live IST Clock.
+* **Weekly Congestion Heatmap:** A custom 7x24 grid visualizing historical incident density by day and hour.
+* **Enhanced Spatial Maps:** Three interactive view modes (Heatmap, Marker Clusters, or Both) over Leaflet with a dynamic Map Legend.
 * **Time-Slice Simulation:** Dispatchers can choose different date and time slices to view how past incidents accumulated during specific morning or evening rush hours.
-* **Spatial Heatmaps:** Visualizes congestion hotspots by grouping events onto a map canvas using CartoDB tile layers.
 
 ### 2. Impact Predictor & Simulator
 * **Interactive Modeler:** Allows operators to input proposed variables (e.g., "Protest", "VIP Movement") along a corridor to predict the traffic footprint.
+* **BSS Factor Radar Chart:** Visualizes all 7 BSS factor weights simultaneously, instantly showing what drives the severity score up.
 * **Scenario Simulator:** A training tool that randomly generates emergency scenarios, calculates the resulting BSS, and displays tactical recommendations.
 * **Resource Requisition Manifest:** Outputs the required count of officers, role splits, shifts, and equipment lists (e.g., cones, signboards, Jersey barriers) based on the event BSS.
 
 ### 3. Diversion Planner
 * **Blocked Corridor Selection:** Allows operators to select any corridor to simulate a traffic block.
+* **Real-Road Routing:** Follows actual OpenStreetMap (OSRM) road geometries for diversion mapping rather than straight lines.
 * **Alternate Route Mapping:** Computes connecting corridors, calculates detour distances, and estimates travel times.
 * **Capacity Scoring:** Colors and ranks alternate routes based on their historical stability and capacity.
 
